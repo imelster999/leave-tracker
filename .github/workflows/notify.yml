@@ -1,0 +1,65 @@
+name: Leave Notifications
+
+on:
+  schedule:
+    - cron: '30 23 * * 0'    # Monday 7:30am SGT — weekly check-in
+    - cron: '30 23 * * 0-4'  # Mon–Fri 7:30am SGT — MC reminder
+    - cron: '0 1 * * 1-5'    # Mon–Fri 9:00am SGT — daily digest
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Notification type'
+        required: true
+        default: 'daily'
+        type: choice
+        options: [daily, weekly, mc]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install @supabase/supabase-js
+
+      - name: Weekly reminder
+        if: github.event.schedule == '30 23 * * 0'
+        run: node notify.js weekly
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          APP_URL: ${{ secrets.APP_URL }}
+
+      - name: MC reminder
+        if: github.event.schedule == '30 23 * * 0-4'
+        run: node notify.js mc
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          APP_URL: ${{ secrets.APP_URL }}
+
+      - name: Daily digest
+        if: github.event.schedule == '0 1 * * 1-5'
+        run: node notify.js daily
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          APP_URL: ${{ secrets.APP_URL }}
+
+      - name: Manual trigger
+        if: github.event_name == 'workflow_dispatch'
+        run: node notify.js ${{ github.event.inputs.mode }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          APP_URL: ${{ secrets.APP_URL }}
